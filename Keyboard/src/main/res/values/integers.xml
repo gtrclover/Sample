@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <!--
   ~ Copyright (C) 2014 Kifile(kifile@kifile.com)
   ~
@@ -15,7 +16,8 @@
   -->
 
 <resources>
-    <!-- Default screen margins, per the Android Design guidelines. -->
-    <dimen name="activity_horizontal_margin">16dp</dimen>
-    <dimen name="activity_vertical_margin">16dp</dimen>
+    <integer name="num_1">8</integer>
+    <integer name="num_2">9</integer>
+    <integer name="num_3">10</integer>
+    <integer name="num_0">7</integer>
 </resources>

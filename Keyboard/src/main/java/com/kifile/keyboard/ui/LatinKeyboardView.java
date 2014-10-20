@@ -14,22 +14,21 @@
  * limitations under the License.
  */
 
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
+package com.kifile.keyboard.ui;
 
-buildscript {
-    repositories {
-        jcenter()
+import android.content.Context;
+import android.inputmethodservice.KeyboardView;
+import android.util.AttributeSet;
+
+/**
+ * TODO: document your custom view class.
+ */
+public class LatinKeyboardView extends KeyboardView {
+    public LatinKeyboardView(Context context, AttributeSet attrs) {
+        super(context, attrs);
     }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:0.13.0'
 
-        // NOTE: Do not place your application dependencies here; they belong
-        // in the individual module build.gradle files
-    }
-}
-
-allprojects {
-    repositories {
-        jcenter()
+    public LatinKeyboardView(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
     }
 }
