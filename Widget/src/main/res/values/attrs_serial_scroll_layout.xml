@@ -19,5 +19,6 @@
         <attr name="autoScroll" format="boolean"/>
         <attr name="scrollDuration" format="integer"/>
         <attr name="scrollDelay" format="integer"/>
+        <attr name="maxLoop" format="integer"/>
     </declare-styleable>
 </resources>

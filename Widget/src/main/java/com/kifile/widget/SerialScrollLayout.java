@@ -34,11 +34,13 @@ public class SerialScrollLayout extends FrameLayout {
     private boolean mAutoScroll;
     private int mScrollDuration;
     private int mScrollDelay;
+    private int mMaxLoop;
 
     private Scroller mScroller;
 
     private int mTouchSlop;
     private int mMaximumVelocity;
+    private int mMinimumFlingVelocity;
     private VelocityTracker mVelocityTracker;
 
     private int mCurrPage;
@@ -54,12 +56,16 @@ public class SerialScrollLayout extends FrameLayout {
             switch (msg.what) {
                 case MSG_AUTO_SCROLL:
                     removeMessages(msg.what);
-                    debug("handler");
                     if (mAutoScroll) {
-                        if (!mIsBeingDragged) {
-                            moveToNextView();
+                        if (mMaxLoop != 0) {
+                            if (!mIsBeingDragged) {
+                                moveToNextView();
+                            }
+                            sendEmptyMessageDelayed(MSG_AUTO_SCROLL, mScrollDelay);
+                            if (mMaxLoop > 0) {
+                                mMaxLoop--;
+                            }
                         }
-                        sendEmptyMessageDelayed(MSG_AUTO_SCROLL, mScrollDelay);
                     }
                     break;
             }
@@ -88,6 +94,8 @@ public class SerialScrollLayout extends FrameLayout {
         ViewConfiguration configuration = ViewConfiguration.get(getContext());
         mTouchSlop = configuration.getScaledTouchSlop();
         mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
+        mMinimumFlingVelocity = configuration.getScaledMinimumFlingVelocity();
+        debug(String.valueOf(mMinimumFlingVelocity));
 
         // Load attributes
         final TypedArray a = getContext().obtainStyledAttributes(
@@ -95,6 +103,7 @@ public class SerialScrollLayout extends FrameLayout {
         mAutoScroll = a.getBoolean(R.styleable.SerialScrollLayout_autoScroll, false);
         mScrollDuration = a.getInteger(R.styleable.SerialScrollLayout_scrollDuration, DURATION);
         mScrollDelay = a.getInteger(R.styleable.SerialScrollLayout_scrollDelay, SCROLL_DELAY);
+        mMaxLoop = a.getInteger(R.styleable.SerialScrollLayout_maxLoop, -1);
         a.recycle();
     }
 
@@ -170,7 +179,7 @@ public class SerialScrollLayout extends FrameLayout {
                     mHandler.removeMessages(MSG_AUTO_SCROLL);
                     mHandler.sendEmptyMessageDelayed(MSG_AUTO_SCROLL, mScrollDelay);
                 }
-                moveToNearestView();
+                moveToView(mCurrPage);
                 break;
         }
         return mIsBeingDragged;
@@ -180,7 +189,7 @@ public class SerialScrollLayout extends FrameLayout {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         initVelocityTrackerIfNotExists();
-        mVelocityTracker.addMovement(event);
+
         final int action = event.getAction();
         switch (action) {
             case MotionEvent.ACTION_DOWN:
@@ -220,16 +229,71 @@ public class SerialScrollLayout extends FrameLayout {
             case MotionEvent.ACTION_UP:
                 if (mIsBeingDragged) {
                     mIsBeingDragged = false;
+                    final VelocityTracker velocityTracker = mVelocityTracker;
+                    velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
+                    int initialVelocity = (int) velocityTracker.getXVelocity();
+                    debug(String.valueOf(initialVelocity));
+                    computeTouchScroll(initialVelocity);
                     recycleVelocityTracker();
                 }
                 if (mAutoScroll) {
                     mHandler.removeMessages(MSG_AUTO_SCROLL);
                     mHandler.sendEmptyMessageDelayed(MSG_AUTO_SCROLL, mScrollDelay);
                 }
-                moveToNearestView();
                 break;
         }
+        if (mVelocityTracker != null) {
+            mVelocityTracker.addMovement(event);
+        }
         return true;
+    }
+
+    private void computeTouchScroll(int velocity) {
+        int start = mCurrPage * mWidth;
+        int offset = getScrollX() - start;
+
+        if (offset > 0) {
+            //scroll to left
+            if (Math.abs(velocity) > mMaximumVelocity / 7) {
+                moveToNextView();
+            } else if (Math.abs(offset) > mWidth / 3) {
+                moveToNextView();
+            } else {
+                moveToView(mCurrPage);
+            }
+        } else {
+            if (Math.abs(velocity) > mMaximumVelocity / 7) {
+                moveToLastView();
+            } else if (Math.abs(offset) > mWidth / 3) {
+                moveToLastView();
+            } else {
+                moveToView(mCurrPage);
+            }
+        }
+
+//        if (Math.abs(velocity) > mMinimumFlingVelocity) {
+//            if (velocity < 0) {
+//                moveToNextView();
+//            } else {
+//                moveToLastView();
+//            }
+//        } else {
+//
+//            if (velocity < 0) {
+//
+//            } else {
+//                offset = mWidth - offset;
+//            }
+//            if (offset > mWidth / 2) {
+//                if (velocity < 0) {
+//                    moveToNextView();
+//                } else {
+//                    moveToLastView();
+//                }
+//            } else {
+//                moveToView(mCurrPage);
+//            }
+//        }
     }
 
     private int getPosition(MotionEvent ev) {
@@ -314,20 +378,6 @@ public class SerialScrollLayout extends FrameLayout {
         scrollTo(mCurrPage * mWidth, 0);
     }
 
-    private void moveToNearestView() {
-        int delta = getScrollX() % mWidth;
-        if (delta < mWidth / 3) {
-            debug("not half");
-            moveToView(mCurrPage);
-        } else if (getScrollX() > mCurrPage * mWidth) {
-            debug("next");
-            moveToNextView();
-        } else {
-            debug("front");
-            moveToFrontView();
-        }
-    }
-
     public void moveToView(int position) {
         if (mIsBeingDragged) {
             //we can't scroll when draged
@@ -339,7 +389,7 @@ public class SerialScrollLayout extends FrameLayout {
         postInvalidate();
     }
 
-    public void moveToFrontView() {
+    public void moveToLastView() {
         moveToView(mCurrPage - 1);
     }
 
