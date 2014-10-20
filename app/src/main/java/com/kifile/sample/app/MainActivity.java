@@ -16,18 +16,22 @@
 
 package com.kifile.sample.app;
 
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 import android.view.MenuItem;
+import com.kifile.widget.SerialScrollLayout;
 
 
 public class MainActivity extends ActionBarActivity {
+    private SerialScrollLayout mLayout;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.sample_serial_scroll_layout);
+        mLayout = (SerialScrollLayout) findViewById(R.id.layout);
     }
 
 

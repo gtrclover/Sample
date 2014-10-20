@@ -40,8 +40,11 @@ public class KeyboardManager {
         }
         Keyboard keyboard = mKeyboardMap.get(type);
         if (keyboard == null) {
-            keyboard = new LatinKeyboard(mContext, type.getLayoutId());
-            mKeyboardMap.put(type, keyboard);
+            int layout = type.getLayoutId();
+            if (layout != 0) {
+                keyboard = new LatinKeyboard(mContext, type.getLayoutId());
+                mKeyboardMap.put(type, keyboard);
+            }
         }
         mKeyboardType = type;
         return keyboard;
