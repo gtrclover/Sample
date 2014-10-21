@@ -8,8 +8,7 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.*;
 import android.widget.FrameLayout;
-import android.widget.ScrollView;
-import android.widget.Scroller;
+import com.kifile.animation.VelocityScroller;
 import com.kifile.animation.ViscousFluidInterpolator;
 
 
@@ -21,7 +20,8 @@ public class SerialScrollLayout extends FrameLayout {
     private static final boolean DBG = true;
     private static final int DURATION = 1000;
     private static final int SCROLL_DELAY = 3000;
-    ScrollView view;
+    private static final int VELOCITY_FACTORY = 10;
+    private static final int SCREEN_FACTORY = 5;
 
     private void debug(String msg) {
         if (DBG) {
@@ -36,16 +36,18 @@ public class SerialScrollLayout extends FrameLayout {
     private int mScrollDelay;
     private int mMaxLoop;
 
-    private Scroller mScroller;
+    private VelocityScroller mScroller;
 
     private int mTouchSlop;
     private int mMaximumVelocity;
     private int mMinimumFlingVelocity;
     private VelocityTracker mVelocityTracker;
+    private OnScrollChangedListener mScrollChangedListener;
 
     private int mCurrPage;
     private int mWidth;
     private int mHeight;
+    private int mPositionOffset;
 
     private static final int MSG_AUTO_SCROLL = 0;
 
@@ -87,7 +89,7 @@ public class SerialScrollLayout extends FrameLayout {
     }
 
     private void init(AttributeSet attrs, int defStyle) {
-        mScroller = new Scroller(getContext(), new ViscousFluidInterpolator());
+        mScroller = new VelocityScroller(getContext(), new ViscousFluidInterpolator());
         setFocusable(true);
         setDescendantFocusability(FOCUS_AFTER_DESCENDANTS);
         setWillNotDraw(false);
@@ -114,6 +116,11 @@ public class SerialScrollLayout extends FrameLayout {
             if (mAutoScroll) {
                 mHandler.removeMessages(MSG_AUTO_SCROLL);
                 mHandler.sendEmptyMessageDelayed(MSG_AUTO_SCROLL, mScrollDelay);
+            }
+            if (mCurrPage >= getChildCount()) {
+                moveToView(getChildCount() - 1);
+            } else if (mCurrPage < 0) {
+                moveToView(0);
             }
         } else {
             mHandler.removeMessages(MSG_AUTO_SCROLL);
@@ -254,46 +261,22 @@ public class SerialScrollLayout extends FrameLayout {
 
         if (offset > 0) {
             //scroll to left
-            if (Math.abs(velocity) > mMaximumVelocity / 7) {
-                moveToNextView();
-            } else if (Math.abs(offset) > mWidth / 3) {
-                moveToNextView();
+            if (Math.abs(velocity) > mMaximumVelocity / VELOCITY_FACTORY || Math.abs(offset) > mWidth / SCREEN_FACTORY) {
+                mCurrPage++;
+                mScroller.startScroll(getScrollX(), getScrollY(), mCurrPage * mWidth - getScrollX(), 0, velocity, 0, 500);
+                postInvalidate();
             } else {
                 moveToView(mCurrPage);
             }
         } else {
-            if (Math.abs(velocity) > mMaximumVelocity / 7) {
-                moveToLastView();
-            } else if (Math.abs(offset) > mWidth / 3) {
-                moveToLastView();
+            if (Math.abs(velocity) > mMaximumVelocity / VELOCITY_FACTORY || Math.abs(offset) > mWidth / SCREEN_FACTORY) {
+                mCurrPage--;
+                mScroller.startScroll(getScrollX(), getScrollY(), mCurrPage * mWidth - getScrollX(), 0, velocity, 0, 500);
+                postInvalidate();
             } else {
                 moveToView(mCurrPage);
             }
         }
-
-//        if (Math.abs(velocity) > mMinimumFlingVelocity) {
-//            if (velocity < 0) {
-//                moveToNextView();
-//            } else {
-//                moveToLastView();
-//            }
-//        } else {
-//
-//            if (velocity < 0) {
-//
-//            } else {
-//                offset = mWidth - offset;
-//            }
-//            if (offset > mWidth / 2) {
-//                if (velocity < 0) {
-//                    moveToNextView();
-//                } else {
-//                    moveToLastView();
-//                }
-//            } else {
-//                moveToView(mCurrPage);
-//            }
-//        }
     }
 
     private int getPosition(MotionEvent ev) {
@@ -303,13 +286,22 @@ public class SerialScrollLayout extends FrameLayout {
     @Override
     public void computeScroll() {
         if (mScroller.computeScrollOffset()) {
-            scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
+            scrollTo(mScroller.getRealX(), mScroller.getRealY());
             invalidate();
         } else {
             if (mCurrPage == 0) {
                 onMoveToFirstView();
             } else if (mCurrPage == getChildCount() - 1) {
                 onMoveToLastView();
+            }
+            if (mScrollChangedListener != null) {
+                mPositionOffset %= getChildCount();
+                int realPosition = (mPositionOffset + mCurrPage) % getChildCount();
+                if (realPosition < 0) {
+                    realPosition += getChildCount();
+                }
+                debug(String.valueOf(realPosition));
+                mScrollChangedListener.onScrollChanged(realPosition);
             }
         }
     }
@@ -402,6 +394,7 @@ public class SerialScrollLayout extends FrameLayout {
         removeView(last);
         addView(last, 0);
         mCurrPage = 1;
+        mPositionOffset--;
     }
 
     private void onMoveToLastView() {
@@ -409,6 +402,11 @@ public class SerialScrollLayout extends FrameLayout {
         removeView(first);
         addView(first);
         mCurrPage = getChildCount() - 2;
+        mPositionOffset++;
+    }
+
+    public void setOnScrollChangedListener(OnScrollChangedListener listener) {
+        this.mScrollChangedListener = listener;
     }
 
     public boolean getAutoScroll() {
@@ -442,4 +440,7 @@ public class SerialScrollLayout extends FrameLayout {
         this.mScrollDuration = duration;
     }
 
+    public interface OnScrollChangedListener {
+        void onScrollChanged(int position);
+    }
 }
