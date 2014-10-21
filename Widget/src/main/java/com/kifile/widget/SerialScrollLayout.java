@@ -392,34 +392,60 @@ public class SerialScrollLayout extends FrameLayout {
     public void scrollTo(int x, int y) {
         super.scrollTo(x, y);
         if (mScrollChangedListener != null) {
-            if (mScroller.isFinished()) {
-                mPositionOffset %= getChildCount();
-                int realPosition = (mPositionOffset + mCurrPage) % getChildCount();
-                if (realPosition < 0) {
-                    realPosition += getChildCount();
-                }
-                mScrollChangedListener.onScrollChanged(realPosition);
-            } else {
+            if (mIsBeingDragged) {
+                //being dragged means user still touch the screen
                 final long curr = System.currentTimeMillis();
                 if (curr - mLastUpdateTime < 100) {
                     return;
                 }
                 mLastUpdateTime = curr;
                 mPositionOffset %= getChildCount();
-                int fromPosition = (mPositionOffset + mCurrPage) % getChildCount();
+                final int page = mCurrPage;
+                int fromPosition = (mPositionOffset + page) % getChildCount();
                 if (fromPosition < 0) {
                     fromPosition += getChildCount();
                 }
-                final boolean toLeft = getScrollX() > mCurrPage * mWidth;
+                final boolean toLeft = getScrollX() > page * mWidth;
                 int toPosition = toLeft ? fromPosition + 1 : fromPosition - 1;
                 if (toPosition < 0) {
                     toPosition += getChildCount();
                 } else if (toPosition >= getChildCount()) {
                     toPosition -= getChildCount();
                 }
-                int toAlpha = Math.abs(getScrollX() % mWidth) * 255 / mWidth;
+                int toAlpha = Math.abs(getScrollX() - page * mWidth) * 255 / mWidth;
                 int fromAlpha = 255 - toAlpha;
                 mScrollChangedListener.onScroll(fromPosition, toPosition, fromAlpha, toAlpha);
+            } else if (!mScroller.isFinished()) {
+                //scroller don't finish means the scrren auto scrolling
+                final long curr = System.currentTimeMillis();
+                if (curr - mLastUpdateTime < 100) {
+                    return;
+                }
+                mLastUpdateTime = curr;
+                mPositionOffset %= getChildCount();
+                final int page = mScroller.getStartX() / mWidth;
+                int fromPosition = (mPositionOffset + page) % getChildCount();
+                if (fromPosition < 0) {
+                    fromPosition += getChildCount();
+                }
+                final boolean toLeft = mScroller.getFinalX() / mWidth > page;
+                int toPosition = toLeft ? fromPosition + 1 : fromPosition - 1;
+                if (toPosition < 0) {
+                    toPosition += getChildCount();
+                } else if (toPosition >= getChildCount()) {
+                    toPosition -= getChildCount();
+                }
+                int toAlpha = Math.abs(getScrollX() - page * mWidth) * 255 / mWidth;
+                int fromAlpha = 255 - toAlpha;
+                mScrollChangedListener.onScroll(fromPosition, toPosition, fromAlpha, toAlpha);
+            } else {
+                //the screen is stop
+                mPositionOffset %= getChildCount();
+                int realPosition = (mPositionOffset + mCurrPage) % getChildCount();
+                if (realPosition < 0) {
+                    realPosition += getChildCount();
+                }
+                mScrollChangedListener.onScrollChanged(realPosition);
             }
         }
     }
@@ -462,6 +488,6 @@ public class SerialScrollLayout extends FrameLayout {
     public interface OnScrollChangedListener {
         void onScrollChanged(int position);
 
-        void onScroll(int fromPosition, int toPoistion, int fromAlpah, int toAlpha);
+        void onScroll(int fromPosition, int toPosition, int fromAlpah, int toAlpha);
     }
 }
