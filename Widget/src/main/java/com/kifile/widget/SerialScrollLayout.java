@@ -5,7 +5,6 @@ import android.content.res.TypedArray;
 import android.os.Handler;
 import android.os.Message;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.*;
 import android.widget.FrameLayout;
 import com.kifile.animation.VelocityScroller;
@@ -17,17 +16,10 @@ import com.kifile.animation.ViscousFluidInterpolator;
  */
 public class SerialScrollLayout extends FrameLayout {
     public static final String TAG = "SerialScrollLayout";
-    private static final boolean DBG = true;
     private static final int DURATION = 1000;
     private static final int SCROLL_DELAY = 3000;
     private static final int VELOCITY_FACTORY = 10;
     private static final int SCREEN_FACTORY = 5;
-
-    private void debug(String msg) {
-        if (DBG) {
-            Log.i(TAG, msg);
-        }
-    }
 
     private int mLastPosition;
     private boolean mIsBeingDragged;
@@ -97,7 +89,6 @@ public class SerialScrollLayout extends FrameLayout {
         mTouchSlop = configuration.getScaledTouchSlop();
         mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
         mMinimumFlingVelocity = configuration.getScaledMinimumFlingVelocity();
-        debug(String.valueOf(mMinimumFlingVelocity));
 
         // Load attributes
         final TypedArray a = getContext().obtainStyledAttributes(
@@ -239,7 +230,6 @@ public class SerialScrollLayout extends FrameLayout {
                     final VelocityTracker velocityTracker = mVelocityTracker;
                     velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
                     int initialVelocity = (int) velocityTracker.getXVelocity();
-                    debug(String.valueOf(initialVelocity));
                     computeTouchScroll(initialVelocity);
                     recycleVelocityTracker();
                 }
@@ -293,15 +283,6 @@ public class SerialScrollLayout extends FrameLayout {
                 onMoveToFirstView();
             } else if (mCurrPage == getChildCount() - 1) {
                 onMoveToLastView();
-            }
-            if (mScrollChangedListener != null) {
-                mPositionOffset %= getChildCount();
-                int realPosition = (mPositionOffset + mCurrPage) % getChildCount();
-                if (realPosition < 0) {
-                    realPosition += getChildCount();
-                }
-                debug(String.valueOf(realPosition));
-                mScrollChangedListener.onScrollChanged(realPosition);
             }
         }
     }
@@ -405,6 +386,44 @@ public class SerialScrollLayout extends FrameLayout {
         mPositionOffset++;
     }
 
+    private long mLastUpdateTime;
+
+    @Override
+    public void scrollTo(int x, int y) {
+        super.scrollTo(x, y);
+        if (mScrollChangedListener != null) {
+            if (mScroller.isFinished()) {
+                mPositionOffset %= getChildCount();
+                int realPosition = (mPositionOffset + mCurrPage) % getChildCount();
+                if (realPosition < 0) {
+                    realPosition += getChildCount();
+                }
+                mScrollChangedListener.onScrollChanged(realPosition);
+            } else {
+                final long curr = System.currentTimeMillis();
+                if (curr - mLastUpdateTime < 100) {
+                    return;
+                }
+                mLastUpdateTime = curr;
+                mPositionOffset %= getChildCount();
+                int fromPosition = (mPositionOffset + mCurrPage) % getChildCount();
+                if (fromPosition < 0) {
+                    fromPosition += getChildCount();
+                }
+                final boolean toLeft = getScrollX() > mCurrPage * mWidth;
+                int toPosition = toLeft ? fromPosition + 1 : fromPosition - 1;
+                if (toPosition < 0) {
+                    toPosition += getChildCount();
+                } else if (toPosition >= getChildCount()) {
+                    toPosition -= getChildCount();
+                }
+                int toAlpha = Math.abs(getScrollX() % mWidth) * 255 / mWidth;
+                int fromAlpha = 255 - toAlpha;
+                mScrollChangedListener.onScroll(fromPosition, toPosition, fromAlpha, toAlpha);
+            }
+        }
+    }
+
     public void setOnScrollChangedListener(OnScrollChangedListener listener) {
         this.mScrollChangedListener = listener;
     }
@@ -442,5 +461,7 @@ public class SerialScrollLayout extends FrameLayout {
 
     public interface OnScrollChangedListener {
         void onScrollChanged(int position);
+
+        void onScroll(int fromPosition, int toPoistion, int fromAlpah, int toAlpha);
     }
 }
