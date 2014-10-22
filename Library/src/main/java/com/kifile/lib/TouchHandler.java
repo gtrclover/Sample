@@ -24,7 +24,7 @@ import android.view.*;
  */
 public class TouchHandler {
     public static final String TAG = "TouchHandler";
-    private static final boolean DBG = true;
+    private static final boolean DBG = false;
 
     private void debug(String msg) {
         if (DBG) {

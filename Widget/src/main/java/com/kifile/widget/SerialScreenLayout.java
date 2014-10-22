@@ -59,6 +59,8 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
     private int mDefaultGutterSize;
     private int mGutterSize;
 
+    private long mLastUpdateTime;
+
     private static final Interpolator sInterpolator = new Interpolator() {
         public float getInterpolation(float t) {
             t -= 1.0f;
@@ -187,9 +189,15 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
         canvas.restore();
     }
 
+    private int mTmpPosition;
+
     @Override
     public void onTouch() {
-        mScroller.abortAnimation();
+        if (!mScroller.isFinished()) {
+            mScroller.abortAnimation();
+        } else {
+            mTmpPosition = -1;
+        }
     }
 
     @Override
@@ -199,9 +207,18 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
         if (!cancel) {
             int startX = mWidth * mCurrPosition;
             int deltaX = getScrollX() - startX;
-            say(String.valueOf(mFlingDistance));
-            if (Math.abs(deltaX) > mFlingDistance && Math.abs(velocityX) > mMinimumVelocity) {
-                targetPosition = deltaX > 0 ? mCurrPosition + 1 : mCurrPosition - 1;
+            if (deltaX > 0) {
+                if (Math.abs(deltaX) > mGutterSize) {
+                    targetPosition = mCurrPosition + 1;
+                } else if (velocityX > 0 && Math.abs(velocityX) > mMinimumVelocity) {
+                    targetPosition = mCurrPosition + 1;
+                }
+            } else {
+                if (Math.abs(deltaX) > mGutterSize) {
+                    targetPosition = mCurrPosition - 1;
+                } else if (velocityX < 0 && Math.abs(velocityX) > mMinimumVelocity) {
+                    targetPosition = mCurrPosition - 1;
+                }
             }
         }
         scrollToPosition(targetPosition, velocityX);
@@ -225,6 +242,7 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
         say("duration:" + duration);
         mScroller.startScroll(startX, 0, finalX - startX, 0, duration);
         postInvalidate();
+        mCurrPosition = targetPosition;
     }
 
     // We want the duration of the page snap animation to be influenced by the distance that
@@ -243,23 +261,33 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
         if (mScroller.computeScrollOffset()) {
             scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
             invalidate();
+        } else if (!mTouchHandler.isBeingDragged()) {
+            mCurrPosition = formatPosition(mCurrPosition);
+            if (mCurrPosition == 0 || mCurrPosition == getChildCount() - 1) {
+                scrollTo(mCurrPosition * mWidth, 0);
+            }
         }
     }
 
-    private long mLastUpdateTime;
+    private int formatPosition(int position) {
+        if (position < 0) {
+            do {
+                position += getChildCount();
+            } while (position < 0);
+        } else if (position >= getChildCount()) {
+            do {
+                position -= getChildCount();
+            } while (position >= getChildCount());
+        }
+        return position;
+    }
+
 
     @Override
     public void scrollTo(int x, int y) {
         super.scrollTo(x, y);
-        mCurrPosition = getScrollX() % mWidth;
-        while (mCurrPosition < 0) {
-            mCurrPosition += getChildCount();
-        }
-        while (mCurrPosition >= getChildCount()) {
-            mCurrPosition -= getChildCount();
-        }
         if (mScrollChangedListener != null) {
-            if (mTouchHandler.isBeingDragged() || !mScroller.isFinished()) {
+            if (mTouchHandler.isBeingDragged()) {
                 //being dragged means user still touch the screen
                 final long curr = System.currentTimeMillis();
                 if (curr - mLastUpdateTime < 100) {
@@ -269,11 +297,29 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
                 final boolean toLeft = mCurrPosition * mWidth < getScrollX();
                 int fromPosition = mCurrPosition;
                 int toPosition = toLeft ? mCurrPosition + 1 : mCurrPosition - 1;
-                int toAlpha = Math.abs(getScrollX() - mCurrPosition * mWidth) * 255 / mWidth;
+                int toAlpha = Math.abs(getScrollX() - fromPosition * mWidth) * 255 / mWidth;
                 int fromAlpha = 255 - toAlpha;
+                say(fromPosition + " " + toPosition + " " + fromAlpha + " " + toAlpha);
+                mScrollChangedListener.onScroll(fromPosition, toPosition, fromAlpha, toAlpha);
+            } else if (!mScroller.isFinished()) {
+                //scroller don't finish
+                final long curr = System.currentTimeMillis();
+                if (curr - mLastUpdateTime < 100) {
+                    return;
+                }
+                mLastUpdateTime = curr;
+                int fromPosition = mScroller.getStartX() / mWidth;
+                int toPosition = mScroller.getFinalX() / mWidth;
+                if (fromPosition == toPosition) {
+                    fromPosition += 1;
+                }
+                int toAlpha = Math.abs(getScrollX() - fromPosition * mWidth) * 255 / mWidth;
+                int fromAlpha = 255 - toAlpha;
+                say(fromPosition + " " + toPosition + " " + fromAlpha + " " + toAlpha);
                 mScrollChangedListener.onScroll(fromPosition, toPosition, fromAlpha, toAlpha);
             } else {
                 //the screen is stop
+                say("change to:" + mCurrPosition);
                 mScrollChangedListener.onScrollChanged(mCurrPosition);
             }
         }
