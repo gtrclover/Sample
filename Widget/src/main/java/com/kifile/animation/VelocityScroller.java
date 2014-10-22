@@ -17,6 +17,7 @@
 package com.kifile.animation;
 
 import android.content.Context;
+import android.support.v4.view.PagerAdapter;
 import android.view.animation.Interpolator;
 import android.widget.Scroller;
 
@@ -57,6 +58,7 @@ public class VelocityScroller extends Scroller {
 
     @Override
     public boolean computeScrollOffset() {
+        PagerAdapter adapter;
         if (!mIsInVelocityMode) {
             return super.computeScrollOffset();
         } else {
