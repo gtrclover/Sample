@@ -24,7 +24,7 @@ import android.view.*;
  */
 public class TouchHandler {
     public static final String TAG = "TouchHandler";
-    private static final boolean DBG = false;
+    private static final boolean DBG = true;
 
     private void debug(String msg) {
         if (DBG) {
@@ -93,7 +93,6 @@ public class TouchHandler {
     }
 
     public boolean handleInterceptTouchEvent(MotionEvent event) {
-        debug("handleIntercept");
         final int action = event.getAction() & MotionEvent.ACTION_MASK;
         if (action != MotionEvent.ACTION_DOWN && mIsBeingDragged) {
             return true;
@@ -121,7 +120,6 @@ public class TouchHandler {
                 break;
             case MotionEvent.ACTION_CANCEL:
             case MotionEvent.ACTION_UP:
-                debug("Intercept done");
                 mIsBeingDragged = false;
                 mActivePointerId = INVALID_POINTER;
                 recycleVelocityTracker();
@@ -137,12 +135,10 @@ public class TouchHandler {
     }
 
     public boolean handleTouchEvent(MotionEvent event) {
-        debug("handleTouch");
         initVelocityTrackerIfNotExists();
         final int action = event.getAction() & MotionEvent.ACTION_MASK;
         switch (action) {
             case MotionEvent.ACTION_DOWN:
-                debug("touch down");
                 if (mCallback != null) {
                     mCallback.onTouch();
                 }
@@ -151,10 +147,8 @@ public class TouchHandler {
                 mActivePointerId = event.getPointerId(0);
                 break;
             case MotionEvent.ACTION_MOVE: {
-                debug("touch move");
                 final int pointerIndex = event.findPointerIndex(mActivePointerId);
                 if (pointerIndex == -1) {
-                    debug("Invalid pointerId =" + mActivePointerId);
                     break;
                 }
                 final float x = event.getX(pointerIndex);
@@ -179,7 +173,6 @@ public class TouchHandler {
                 break;
             }
             case MotionEvent.ACTION_UP:
-                debug("touch up");
                 final VelocityTracker velocityTracker = mVelocityTracker;
                 velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
                 int initialVelocityX = (int) velocityTracker.getXVelocity(mActivePointerId);
@@ -209,6 +202,9 @@ public class TouchHandler {
                 break;
             }
             case MotionEvent.ACTION_POINTER_UP:
+                if (mCallback != null) {
+                    mCallback.onPointerTouch();
+                }
                 onSecondaryPointerUp(event);
                 break;
         }
@@ -252,6 +248,8 @@ public class TouchHandler {
     public interface Callback {
 
         void onTouch();
+
+        void onPointerTouch();
 
         void onRelease(int velocityX, int velocityY, boolean cancel);
     }
