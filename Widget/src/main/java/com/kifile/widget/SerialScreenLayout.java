@@ -194,15 +194,17 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
     @Override
     public void onTouch() {
         if (!mScroller.isFinished()) {
-            mDirty = true;
-            cleanPosition();
-            mLastPosition = getScrollX();
-            if (mScroller.getFinalX() > mScroller.getCurrX()) {
-                mTmpDirectionLeft = true;
-            } else {
-                mTmpDirectionLeft = false;
+            if (Math.abs(mScroller.getCurrX() - mScroller.getFinalX()) > mGutterSize) {
+                mDirty = true;
+                cleanPosition();
+                mLastPosition = getScrollX();
+                if (mScroller.getFinalX() > mScroller.getCurrX()) {
+                    mTmpDirectionLeft = true;
+                } else {
+                    mTmpDirectionLeft = false;
+                }
+                mScroller.abortAnimation();
             }
-            mScroller.abortAnimation();
         } else {
             mDirty = false;
         }
@@ -219,31 +221,24 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
     @Override
     public void onRelease(int velocityX, int velocityY, boolean cancel) {
         cleanPosition();
-        say("velocity:" + velocityX);
         int targetPosition = mCurrPosition;
         if (mDirty) {
             mDirty = false;
             if (Math.abs(mLastPosition - getScrollX()) > mGutterSize && Math.abs(velocityX) > mMinimumVelocity) {
                 if (mTmpDirectionLeft) {
-                    say("1");
                     if (velocityX > 0) {
-                        say("3");
                         targetPosition -= 1;
                     } else {
-                        say("4");
                         if (getScrollX() > mCurrPosition * mWidth) {
                             targetPosition += 1;
                         }
                     }
                 } else {
-                    say("2");
                     if (velocityX > 0) {
-                        say("3");
                         if (getScrollX() > mCurrPosition * mWidth) {
                             targetPosition -= 1;
                         }
                     } else {
-                        say("4");
                         targetPosition += 1;
                     }
                 }
@@ -278,7 +273,6 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
     }
 
     private void scrollToPosition(int targetPosition, int velocityX) {
-        say("from:" + mCurrPosition + ",to:" + targetPosition);
         cleanPosition();
         targetPosition = formatPosition(targetPosition);
         if (mCurrPosition == 0 && targetPosition == getChildCount() - 1) {
@@ -291,7 +285,7 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
         final int delta = Math.abs(finalX - startX);
         velocityX = Math.abs(velocityX);
 
-        int duration = DEFAULT_DURATION;
+        int duration = (int) (1.0f * DEFAULT_DURATION * delta / mWidth);
         if (velocityX > mMinimumVelocity) {
             final int width = mWidth;
             final int halfWidth = width / 2;
@@ -299,9 +293,7 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
             final float distance = halfWidth + halfWidth *
                     distanceInfluenceForSnapDuration(distanceRatio);
             int velocityDuration = 4 * Math.round(1000 * Math.abs(distance / velocityX));
-            duration = Math.min(DEFAULT_DURATION, velocityDuration);
-        } else {
-            duration = (int) (1.0f * duration * delta / mWidth);
+            duration = Math.min(duration, velocityDuration);
         }
         mScroller.startScroll(startX, 0, finalX - startX, 0, duration);
         invalidate();
