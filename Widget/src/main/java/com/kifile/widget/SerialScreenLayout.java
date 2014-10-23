@@ -45,10 +45,9 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
         }
     }
 
-    private static final int MIN_DISTANCE_FOR_FLING = 25; // dips
     private static final int DEFAULT_GUTTER_SIZE = 16; // dips
     private static final int MIN_FLING_VELOCITY = 400; // dips
-    private static final int DEFAULT_DURATION = 1000;
+    private static final int DEFAULT_DURATION = 1500;
 
     private OnScrollChangedListener mScrollChangedListener;
 
@@ -56,7 +55,6 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
     private Scroller mScroller;
 
     private int mMinimumVelocity;
-    private int mFlingDistance;
     private int mDefaultGutterSize;
     private int mGutterSize;
 
@@ -93,7 +91,6 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
         mScroller = new Scroller(getContext(), sInterpolator);
         final float density = getResources().getDisplayMetrics().density;
         mMinimumVelocity = (int) (MIN_FLING_VELOCITY * density);
-        mFlingDistance = (int) (MIN_DISTANCE_FOR_FLING * density);
         mDefaultGutterSize = (int) (DEFAULT_GUTTER_SIZE * density);
         // Load attributes
         final TypedArray a = getContext().obtainStyledAttributes(
@@ -190,17 +187,30 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
         canvas.restore();
     }
 
+    private boolean mDirty;
+    private int mLastPosition;
+    private boolean mTmpDirectionLeft;
+
     @Override
     public void onTouch() {
         if (!mScroller.isFinished()) {
+            mDirty = true;
+            cleanPosition();
+            mLastPosition = getScrollX();
             if (mScroller.getFinalX() > mScroller.getCurrX()) {
-                mCurrPosition -= 1;
+                mTmpDirectionLeft = true;
+            } else {
+                mTmpDirectionLeft = false;
             }
             mScroller.abortAnimation();
+        } else {
+            mDirty = false;
         }
-        cleanPosition();
     }
 
+    /**
+     * when muiltipointer touch clean the position in case scrolled more than one page
+     */
     @Override
     public void onPointerTouch() {
         cleanPosition();
@@ -209,8 +219,37 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
     @Override
     public void onRelease(int velocityX, int velocityY, boolean cancel) {
         cleanPosition();
+        say("velocity:" + velocityX);
         int targetPosition = mCurrPosition;
-        if (!cancel) {
+        if (mDirty) {
+            mDirty = false;
+            if (Math.abs(mLastPosition - getScrollX()) > mGutterSize && Math.abs(velocityX) > mMinimumVelocity) {
+                if (mTmpDirectionLeft) {
+                    say("1");
+                    if (velocityX > 0) {
+                        say("3");
+                        targetPosition -= 1;
+                    } else {
+                        say("4");
+                        if (getScrollX() > mCurrPosition * mWidth) {
+                            targetPosition += 1;
+                        }
+                    }
+                } else {
+                    say("2");
+                    if (velocityX > 0) {
+                        say("3");
+                        if (getScrollX() > mCurrPosition * mWidth) {
+                            targetPosition -= 1;
+                        }
+                    } else {
+                        say("4");
+                        targetPosition += 1;
+                    }
+                }
+            }
+            scrollToPosition(targetPosition, 0);
+        } else if (!cancel) {
             int startX = mWidth * mCurrPosition;
             int deltaX = getScrollX() - startX;
             if (deltaX > 0) {
@@ -230,8 +269,8 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
                     }
                 }
             }
+            scrollToPosition(targetPosition, velocityX);
         }
-        scrollToPosition(targetPosition, velocityX);
     }
 
     public void scrollToNextPosition() {
@@ -239,11 +278,8 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
     }
 
     private void scrollToPosition(int targetPosition, int velocityX) {
-        final int tmpPosition = formatPosition(mCurrPosition);
-        if (tmpPosition != mCurrPosition) {
-            scrollBy((tmpPosition - mCurrPosition) * mWidth, 0);
-            mCurrPosition = formatPosition(mCurrPosition);
-        }
+        say("from:" + mCurrPosition + ",to:" + targetPosition);
+        cleanPosition();
         targetPosition = formatPosition(targetPosition);
         if (mCurrPosition == 0 && targetPosition == getChildCount() - 1) {
             targetPosition = -1;
@@ -252,17 +288,20 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
         }
         int startX = getScrollX();
         int finalX = targetPosition * mWidth;
+        final int delta = Math.abs(finalX - startX);
         velocityX = Math.abs(velocityX);
 
-        int duration = 1000;
+        int duration = DEFAULT_DURATION;
         if (velocityX > mMinimumVelocity) {
             final int width = mWidth;
             final int halfWidth = width / 2;
-            final float distanceRatio = Math.min(1f, 1.0f * Math.abs(finalX - startX) / width);
+            final float distanceRatio = Math.min(1f, 1.0f * delta / width);
             final float distance = halfWidth + halfWidth *
                     distanceInfluenceForSnapDuration(distanceRatio);
             int velocityDuration = 4 * Math.round(1000 * Math.abs(distance / velocityX));
             duration = Math.min(DEFAULT_DURATION, velocityDuration);
+        } else {
+            duration = (int) (1.0f * duration * delta / mWidth);
         }
         mScroller.startScroll(startX, 0, finalX - startX, 0, duration);
         invalidate();
@@ -357,9 +396,13 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
                         formatPosition(toPosition), fromAlpha, toAlpha);
             } else {
                 //the screen is stop
-                mScrollChangedListener.onScrollChanged(mCurrPosition);
+                mScrollChangedListener.onScrollChanged(formatPosition(mCurrPosition));
             }
         }
+    }
+
+    public int getPosition() {
+        return mCurrPosition;
     }
 
     public interface OnScrollChangedListener {
