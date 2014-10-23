@@ -190,20 +190,13 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
         canvas.restore();
     }
 
-//    private boolean mIsDraft;
-//    private int mTmpPosition;
-
     @Override
     public void onTouch() {
         if (!mScroller.isFinished()) {
-//            mIsDraft = true;
-//            mTmpPosition = mScroller.getCurrX();
             if (mScroller.getFinalX() > mScroller.getCurrX()) {
                 mCurrPosition -= 1;
             }
             mScroller.abortAnimation();
-        } else {
-//            mIsDraft = false;
         }
         cleanPosition();
     }
@@ -217,36 +210,35 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
     public void onRelease(int velocityX, int velocityY, boolean cancel) {
         cleanPosition();
         int targetPosition = mCurrPosition;
-//        if (mIsDraft) {
-////            say("draft");
-//            mIsDraft = false;
-//            if (Math.abs(mTmpPosition - getScrollX()) < mGutterSize) {
-//                scrollToPosition(targetPosition, velocityX);
-//                return;
-//            }
-//        }
         if (!cancel) {
             int startX = mWidth * mCurrPosition;
             int deltaX = getScrollX() - startX;
             if (deltaX > 0) {
-                if (Math.abs(deltaX) > mGutterSize) {
-                    targetPosition = mCurrPosition + 1;
-                } else if (velocityX > 0 && Math.abs(velocityX) > mMinimumVelocity) {
-                    targetPosition = mCurrPosition + 1;
+                if (velocityX <= 0) {
+                    if (Math.abs(deltaX) > mGutterSize) {
+                        targetPosition = mCurrPosition + 1;
+                    } else if (Math.abs(velocityX) > mMinimumVelocity) {
+                        targetPosition = mCurrPosition + 1;
+                    }
                 }
             } else {
-                if (Math.abs(deltaX) > mGutterSize) {
-                    targetPosition = mCurrPosition - 1;
-                } else if (velocityX < 0 && Math.abs(velocityX) > mMinimumVelocity) {
-                    targetPosition = mCurrPosition - 1;
+                if (velocityX >= 0) {
+                    if (Math.abs(deltaX) > mGutterSize) {
+                        targetPosition = mCurrPosition - 1;
+                    } else if (Math.abs(velocityX) > mMinimumVelocity) {
+                        targetPosition = mCurrPosition - 1;
+                    }
                 }
             }
         }
         scrollToPosition(targetPosition, velocityX);
     }
 
+    public void scrollToNextPosition() {
+        scrollToPosition(mCurrPosition + 1, 0);
+    }
+
     private void scrollToPosition(int targetPosition, int velocityX) {
-        say("scroll to" + targetPosition + ",from:" + mCurrPosition);
         final int tmpPosition = formatPosition(mCurrPosition);
         if (tmpPosition != mCurrPosition) {
             scrollBy((tmpPosition - mCurrPosition) * mWidth, 0);
@@ -270,7 +262,6 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
             final float distance = halfWidth + halfWidth *
                     distanceInfluenceForSnapDuration(distanceRatio);
             int velocityDuration = 4 * Math.round(1000 * Math.abs(distance / velocityX));
-            say("duration:" + velocityDuration);
             duration = Math.min(DEFAULT_DURATION, velocityDuration);
         }
         mScroller.startScroll(startX, 0, finalX - startX, 0, duration);
@@ -309,16 +300,12 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
             } else {
                 mCurrPosition = cx / mWidth - 1;
             }
-            say("change position form " + position + " to " + mCurrPosition);
         }
-        say("position:" + mCurrPosition + ",scroll:" + getScrollX());
         final int tmp = formatPosition(mCurrPosition);
         if (tmp != mCurrPosition) {
-            say("update position");
             scrollBy((tmp - mCurrPosition) * mWidth, 0);
             mCurrPosition = tmp;
         }
-        say("position:" + mCurrPosition + ",scroll:" + getScrollX());
     }
 
     private int formatPosition(int position) {
