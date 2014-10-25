@@ -10,6 +10,8 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/Keyboard" />
             <option value="$PROJECT_DIR$/Library" />
+            <option value="$PROJECT_DIR$/Material" />
+            <option value="$PROJECT_DIR$/Material-v7" />
             <option value="$PROJECT_DIR$/Widget" />
             <option value="$PROJECT_DIR$/app" />
           </set>

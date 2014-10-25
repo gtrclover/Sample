@@ -22,19 +22,19 @@ buildscript {
         classpath 'com.android.tools.build:gradle:0.13.0'
     }
 }
-apply plugin: 'com.android.library'
+apply plugin: 'com.android.application'
 
 repositories {
-    jcenter()
+        jcenter()
 }
 
 android {
     compileSdkVersion 21
-    buildToolsVersion '21.0.2'
+    buildToolsVersion "21.0.2"
 
     defaultConfig {
-        applicationId "com.kifile.widget"
-        minSdkVersion 8
+        applicationId "com.kifile.material"
+        minSdkVersion 21
         targetSdkVersion 21
         versionCode 1
         versionName "1.0"
@@ -49,5 +49,4 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.android.support:appcompat-v7:21.0.0'
 }

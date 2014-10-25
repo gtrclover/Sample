@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.kifile.lib;
+package com.kifile.widget;
 
 import android.util.Log;
 import android.view.*;
