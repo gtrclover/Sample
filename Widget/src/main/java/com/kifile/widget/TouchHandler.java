@@ -140,7 +140,7 @@ public class TouchHandler {
         switch (action) {
             case MotionEvent.ACTION_DOWN:
                 if (mCallback != null) {
-                    mCallback.onTouch();
+                    mCallback.onTouch(event);
                 }
                 mLastMotionX = event.getX();
                 mLastMotionY = event.getY();
@@ -168,7 +168,10 @@ public class TouchHandler {
                     // Scroll to follow the motion event
                     mLastMotionX = x;
                     mLastMotionY = y;
-                    mView.scrollBy((int) deltaX, 0);
+                    if (mCallback != null) {
+                        mCallback.onScrollBy((int) deltaX, 0);
+                    }
+
                 }
                 break;
             }
@@ -203,7 +206,7 @@ public class TouchHandler {
             }
             case MotionEvent.ACTION_POINTER_UP:
                 if (mCallback != null) {
-                    mCallback.onPointerTouch();
+                    mCallback.onPointerTouch(event);
                 }
                 onSecondaryPointerUp(event);
                 break;
@@ -247,10 +250,28 @@ public class TouchHandler {
 
     public interface Callback {
 
-        void onTouch();
+        //开始触摸事件
+        void onTouch(MotionEvent event);
 
-        void onPointerTouch();
+        //开始多点触摸
+        void onPointerTouch(MotionEvent event);
 
+        /**
+         * 移动位置
+         *
+         * @param dx x轴方向偏移
+         * @param dy y轴方向偏移
+         */
+        void onScrollBy(int dx, int dy);
+
+
+        /**
+         * 触摸事件结束
+         *
+         * @param velocityX 结束时,x轴加速度
+         * @param velocityY 结束时,y轴加速度
+         * @param cancel    是否取消
+         */
         void onRelease(int velocityX, int velocityY, boolean cancel);
     }
 }

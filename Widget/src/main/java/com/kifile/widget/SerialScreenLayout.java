@@ -191,7 +191,7 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
     private boolean mTmpDirectionLeft;
 
     @Override
-    public void onTouch() {
+    public void onTouch(MotionEvent event) {
         if (!mScroller.isFinished()) {
             if (Math.abs(mScroller.getCurrX() - mScroller.getFinalX()) > mGutterSize) {
                 mDirty = true;
@@ -213,8 +213,13 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
      * when muiltipointer touch clean the position in case scrolled more than one page
      */
     @Override
-    public void onPointerTouch() {
+    public void onPointerTouch(MotionEvent event) {
         cleanPosition();
+    }
+
+    @Override
+    public void onScrollBy(int dx, int dy) {
+        scrollBy(dx, 0);
     }
 
     @Override
@@ -263,6 +268,8 @@ public class SerialScreenLayout extends FrameLayout implements TouchHandler.Call
                     }
                 }
             }
+            scrollToPosition(targetPosition, velocityX);
+        }else{
             scrollToPosition(targetPosition, velocityX);
         }
     }

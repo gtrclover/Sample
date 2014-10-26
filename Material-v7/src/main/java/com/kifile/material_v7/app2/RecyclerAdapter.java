@@ -17,7 +17,10 @@
 package com.kifile.material_v7.app2;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.support.v4.util.LruCache;
 import android.support.v7.widget.RecyclerView;
+import android.test.TouchUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -31,6 +34,9 @@ import java.util.List;
 public class RecyclerAdapter extends RecyclerView.Adapter {
     private Context mContext;
     private List<String> mTitiles;
+    private LruCache<String,Bitmap> mCache = new LruCache<String, Bitmap>(20){
+
+    };
 
     public RecyclerAdapter(Context context, List<String> titles) {
         this.mContext = context;
